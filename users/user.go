@@ -1,39 +1,46 @@
 package users
 
 import (
-	"time"
-
+	"aftermath.link/repo/am-users-api/users/bans"
 	"aftermath.link/repo/am-users-api/users/customization"
 	"aftermath.link/repo/am-users-api/users/paidcontent"
 	"aftermath.link/repo/am-users-api/users/players"
+	"aftermath.link/repo/am-users-api/users/verified"
+	"aftermath.link/repo/logs"
 )
 
 // User represents a user account, closely based on the Discord API User object.
 // https://discord.com/developers/docs/topics/oauth2
 type InternalUser struct {
-	ID string `json:"_id,omitempty"` // Internal ID, assigned automatically by the database.
+	ID       string                    `json:"_id" bson:"_id"`                         // user ID
+	Locale   string                    `json:"locale" bson:"locale"`                   // User's current language
+	Verified *verified.DiscordVerified `json:"discordVerified" bson:"discordVerified"` // Verification status of the user
 
-	DiscordID string `json:"discordId"` // Unique User ID on Discord
-	Flags     int    `json:"flags"`     // User account type - https://discord.com/developers/docs/resources/user#user-object-user-flags
+	Player *players.InternalProfile `json:"player" bson:"player"` // Player profile
 
-	Locale                string    `json:"locale"`       // User's current language
-	AccessToken           string    `json:"accessToken"`  // User's access token
-	RefreshToken          string    `json:"refreshToken"` // https://discord.com/developers/docs/topics/oauth2#authorization-code-grant-refresh-token-exchange-example
-	AccessTokenExpiration time.Time `json:"accessTokenExpiration"`
+	PaidContent          *paidcontent.InternalPaidContent                     `json:"paidContent" bson:"paidContent"`                   // Oaid content
+	UniqueCustomizations map[string]customization.InternalCustomizationOption `json:"uniqueCustomizations" bson:"uniqueCustomizations"` // User unique customization options
+}
 
-	Player players.InternalProfile `json:"player"` // Player profile
-
-	PaidContent          paidcontent.InternalPaidContent                      `json:"paidContent"`          // Oaid content
-	UniqueCustomizations map[string]customization.InternalCustomizationOption `json:"uniqueCustomizations"` // User unique customization options
+// Check if all required fileds are filled
+func (u *InternalUser) IsRecordComplete() bool {
+	return u.ID != "" && u.Locale != ""
 }
 
 // Converts the internal user to an external user.
 func (u *InternalUser) Export() ExternalUser {
 	var externalUser ExternalUser
-	externalUser.ID = u.DiscordID
+	externalUser.ID = u.ID
 	externalUser.Locale = u.Locale
-	externalUser.Player = u.Player.Export()
-	externalUser.PaidContent = u.PaidContent.Export()
+	if u.Verified != nil {
+		externalUser.Verified = u.Verified.IsVerified()
+	}
+	if u.Player != nil {
+		externalUser.Player = u.Player.Export()
+	}
+	if u.PaidContent != nil {
+		externalUser.PaidContent = u.PaidContent.Export()
+	}
 
 	externalUser.addCustomizations(u)
 	return externalUser
@@ -41,6 +48,9 @@ func (u *InternalUser) Export() ExternalUser {
 
 // Adds customization options to the external user based on the internal user and the customization options.
 func (exported *ExternalUser) addCustomizations(u *InternalUser) {
+	if u.UniqueCustomizations == nil {
+		return
+	}
 	exported.Customizations = make(map[string]interface{})
 	for _, customization := range u.UniqueCustomizations {
 		if customization.PlusRequired && exported.PaidContent.IsPlusMember {
@@ -60,8 +70,21 @@ func (exported *ExternalUser) addCustomizations(u *InternalUser) {
 // Represents a user account which is safe to share with other packages.
 type ExternalUser struct {
 	ID             string                               `json:"id"` // Unique User ID on Discord
+	Verified       bool                                 `json:"verified"`
 	Locale         string                               `json:"locale"`
-	Player         players.ExternalProfile              `json:"player"`
-	PaidContent    paidcontent.ExtenalPaidContent       `json:"paidContent"`
+	Player         *players.ExternalProfile             `json:"player"`
+	PaidContent    *paidcontent.ExtenalPaidContent      `json:"paidContent"`
 	Customizations customization.ExternalCustomizations `json:"customizations"`
+	IsBanned       bool                                 `json:"isBanned"`
+	BanReason      string                               `json:"banReason,omitempty"`
+}
+
+func (u *ExternalUser) AddBanDetails() {
+	banned, reason, err := bans.FindActiveBanRecordByDiscordID(u.ID)
+	u.BanReason = reason
+	u.IsBanned = banned
+
+	if err != nil {
+		logs.Warning("Failed to get ban details for user %s: %s", u.ID, err.Error())
+	}
 }

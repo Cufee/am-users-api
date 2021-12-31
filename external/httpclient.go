@@ -18,7 +18,6 @@ func HTTPRequest(url string, method string, headers map[string]string, payload [
 	defer func() {
 		// Logging
 		if err != nil || resp.StatusCode != http.StatusOK {
-			logs.Warning("A request to %s failed with status code %d", url, resp.StatusCode)
 			logs.Warning("URL: %v", url)
 			logs.Warning("Headers: %v", headers)
 			logs.Warning("Payload: %v", string(payload))
@@ -54,6 +53,7 @@ func HTTPRequest(url string, method string, headers map[string]string, payload [
 	if err != nil {
 		return resp.StatusCode, logs.Wrap(err, "ioutil.ReadAll failed")
 	}
+
 	// Check response code
 	if resp.StatusCode != http.StatusOK {
 		return resp.StatusCode, fmt.Errorf("HTTP status code: %v", resp.StatusCode)
