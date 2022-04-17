@@ -2,8 +2,6 @@ package verified
 
 import (
 	"time"
-
-	"aftermath.link/repo/logs"
 )
 
 type DiscordVerified struct {

@@ -2,10 +2,6 @@ module aftermath.link/repo/am-users-api
 
 go 1.17
 
-replace aftermath.link/repo/logs => ../logs
-
-replace aftermath.link/repo/mongo-driver => ../mongo-driver
-
 require (
 	aftermath.link/repo/logs v0.0.0-00010101000000-000000000000
 	aftermath.link/repo/mongo-driver v0.0.0-00010101000000-000000000000

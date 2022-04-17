@@ -3,7 +3,7 @@ package main
 import (
 	"aftermath.link/repo/am-users-api/database"
 	usershandlers "aftermath.link/repo/am-users-api/handlers/users"
-	"aftermath.link/repo/logs"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )
