@@ -1,6 +1,6 @@
 module github.com/byvko-dev/am-users-api
 
-go 1.17
+go 1.19
 
 require (
 	github.com/byvko-dev/am-core v1.3.6
